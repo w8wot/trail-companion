@@ -1,13 +1,6 @@
 function Hero() {
   return (
-    <main
-      style={{
-        maxWidth: "1100px",
-        margin: "60px auto",
-        padding: "0 20px",
-        textAlign: "center",
-      }}
-    >
+    <>
       <h2 style={{ fontSize: "3rem", marginBottom: "20px" }}>
         Ride Together. Ride Smarter.
       </h2>
@@ -38,7 +31,7 @@ function Hero() {
       >
         Coming Soon
       </button>
-    </main>
+    </>
   );
 }
 
