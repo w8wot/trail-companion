@@ -1,3 +1,5 @@
+import FeatureCard from "./FeatureCard";
+
 function Features() {
   return (
     <section
@@ -9,58 +11,26 @@ function Features() {
         textAlign: "left",
       }}
     >
-      <div
-        style={{
-          padding: "24px",
-          border: "1px solid #333",
-          borderRadius: "12px",
-        }}
-      >
-        <h3>Plan Rides</h3>
-        <p style={{ color: "#bbb" }}>
-          Schedule club rides, share meeting points, and keep everyone informed.
-        </p>
-      </div>
+      <FeatureCard
+        title="Plan Rides"
+        description="Schedule club rides, share meeting points, and keep everyone informed."
+      />
 
-      <div
-        style={{
-          padding: "24px",
-          border: "1px solid #333",
-          borderRadius: "12px",
-        }}
-      >
-        <h3>Manage Members</h3>
-        <p style={{ color: "#bbb" }}>
-          Organize memberships, roles, attendance, and club communication.
-        </p>
-      </div>
+      <FeatureCard
+        title="Manage Members"
+        description="Organize memberships, roles, attendance, and club communication."
+      />
 
-      <div
-        style={{
-          padding: "24px",
-          border: "1px solid #333",
-          borderRadius: "12px",
-        }}
-      >
-        <h3>Share Routes</h3>
-        <p style={{ color: "#bbb" }}>
-          Save trail information, route details, and important ride notes.
-        </p>
-      </div>
+      <FeatureCard
+        title="Share Routes"
+        description="Save trail information, route details, and important ride notes."
+      />
 
-      <div
-        style={{
-          padding: "24px",
-          border: "1px solid #333",
-          borderRadius: "12px",
-        }}
-      >
-        <h3>Ride Safer</h3>
-        <p style={{ color: "#bbb" }}>
-          Help riders stay connected and account for everyone during club
-          events.
-        </p>
-      </div>
+      <FeatureCard
+        title="Ride Safer"
+        description="Help riders stay connected and account for everyone during club events."
+      />
+
     </section>
   );
 }
