@@ -1,6 +1,7 @@
 import Navbar from "./components/Navbar";
 import Features from "./components/Features";
 import Hero from "./components/Hero";
+import LoanerList from "./components/LoanerList";
 
 function App() {
   return (
@@ -15,8 +16,7 @@ function App() {
     textAlign: "center",
   }}
 >
-<Hero />
-<Features />
+<LoanerList />
 </main>
     </>
   );
