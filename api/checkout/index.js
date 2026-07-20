@@ -1,3 +1,10 @@
+const { TableClient } = require("@azure/data-tables");
+const crypto = require("crypto");
+const tableClient = TableClient.fromConnectionString(
+  "UseDevelopmentStorage=true",
+  "LoanCheckouts"
+);
+
 module.exports = async function (context, req) {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -40,6 +47,18 @@ module.exports = async function (context, req) {
     id,
     checkedOutAt,
   });
+
+  await tableClient.createTable().catch(() => {});
+
+await tableClient.createEntity({
+  partitionKey: category,
+  rowKey: crypto.randomUUID(),
+  borrowerName,
+  category,
+  item,
+  id,
+  checkedOutAt,
+});
 
   context.res = {
     status: 200,
