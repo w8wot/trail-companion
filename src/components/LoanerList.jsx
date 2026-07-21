@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import "./LoanerList.css";
 
@@ -16,6 +16,14 @@ function LoanerList() {
   const checkoutApiUrl =
     import.meta.env.VITE_CHECKOUT_API_URL || "/api/checkout";
 
+  const loanersApiUrl =
+    import.meta.env.VITE_LOANERS_API_URL ||
+    checkoutApiUrl.replace(/\/checkout$/, "/loaners");
+
+  const checkinApiUrl =
+    import.meta.env.VITE_CHECKIN_API_URL ||
+    checkoutApiUrl.replace(/\/checkout$/, "/checkin");
+
   const isCheckoutPage = params.get("checkout") === "true";
   const checkoutCategory = params.get("category") || "";
   const checkoutItem = params.get("item") || "";
@@ -29,6 +37,13 @@ function LoanerList() {
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [checkoutSyncState, setCheckoutSyncState] = useState("idle");
+  const [activeLoaners, setActiveLoaners] = useState([]);
+  const [loanersLoading, setLoanersLoading] = useState(true);
+  const [loanersError, setLoanersError] = useState("");
+  const [appView, setAppView] = useState("checkout");
+  const [returnCategory, setReturnCategory] = useState("");
+  const [checkinRowKey, setCheckinRowKey] = useState("");
+  const [checkinError, setCheckinError] = useState("");
 
   const cleanedBorrowerName = borrowerName.trim();
   const borrowerNameIsValid = cleanedBorrowerName.length >= 2;
@@ -41,6 +56,62 @@ function LoanerList() {
     }),
     [checkoutCategory, checkoutItem, checkoutId]
   );
+
+  async function loadActiveLoaners() {
+    setLoanersLoading(true);
+    setLoanersError("");
+
+    try {
+      const response = await fetch(loanersApiUrl);
+
+      if (!response.ok) {
+        throw new Error(`Loaners API returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      setActiveLoaners(data.loaners || []);
+    } catch (error) {
+      console.error("Unable to load active loaners", error);
+      setLoanersError("Unable to load active loans.");
+    } finally {
+      setLoanersLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isCheckoutPage) {
+      loadActiveLoaners();
+    }
+  }, [isCheckoutPage]);
+
+  async function handleCheckIn(loan) {
+    setCheckinRowKey(loan.rowKey);
+    setCheckinError("");
+
+    try {
+      const response = await fetch(checkinApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category: loan.category,
+          rowKey: loan.rowKey,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Check-in API returned ${response.status}`);
+      }
+
+      await loadActiveLoaners();
+    } catch (error) {
+      console.error("Unable to check in loaner", error);
+      setCheckinError("Unable to return this item. Please try again.");
+    } finally {
+      setCheckinRowKey("");
+    }
+  }
 
   function createCheckoutQr() {
     if (!selectedCategory || itemDescription.trim().length < 2) {
@@ -189,87 +260,214 @@ function LoanerList() {
     );
   }
 
+  const filteredReturnLoans = activeLoaners.filter(
+    (loan) => !returnCategory || loan.category === returnCategory
+  );
+
   return (
     <main className="loaner-page">
       <section className="loaner-panel">
-        <h1>Loaner Checkout</h1>
-        <h2>Select a category</h2>
-
         <div className="category-grid">
-          {categories.map((category) => (
-            <button
-              className={`category-button ${
-                selectedCategory === category ? "selected" : ""
-              }`}
-              key={category}
-              type="button"
-              onClick={() => {
-                setSelectedCategory(category);
-                setCheckoutUrl("");
-              }}
-            >
-              {category}
-            </button>
-          ))}
+          <button
+            className={`category-button ${
+              appView === "checkout" ? "selected" : ""
+            }`}
+            type="button"
+            onClick={() => setAppView("checkout")}
+          >
+            Check Out
+          </button>
+
+          <button
+            className={`category-button ${
+              appView === "return" ? "selected" : ""
+            }`}
+            type="button"
+            onClick={() => {
+              setAppView("return");
+              loadActiveLoaners();
+            }}
+          >
+            Return Items
+          </button>
         </div>
 
-        {selectedCategory && (
-          <section className="item-section">
-            <h2>{selectedCategory}</h2>
+        {appView === "checkout" && (
+          <>
+            <h1>Loaner Checkout</h1>
+            <h2>Select a category</h2>
 
-            <div className="loaner-form">
-              <label htmlFor="item-description">
-                Item description
-              </label>
-
-              <input
-                id="item-description"
-                type="text"
-                value={itemDescription}
-                onChange={(event) => {
-                  setItemDescription(event.target.value);
-                  setCheckoutUrl("");
-                }}
-                placeholder="Example: Midland handheld radio"
-              />
-
-              <label htmlFor="item-id">
-                ID number or notes
-              </label>
-
-              <input
-                id="item-id"
-                type="text"
-                value={itemId}
-                onChange={(event) => {
-                  setItemId(event.target.value);
-                  setCheckoutUrl("");
-                }}
-                placeholder="Example: Radio 3"
-              />
-
-              <button
-                className="primary-button"
-                type="button"
-                onClick={createCheckoutQr}
-                disabled={itemDescription.trim().length < 2}
-              >
-                Create Checkout QR
-              </button>
+            <div className="category-grid">
+              {categories.map((category) => (
+                <button
+                  className={`category-button ${
+                    selectedCategory === category ? "selected" : ""
+                  }`}
+                  key={category}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setCheckoutUrl("");
+                  }}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
-          </section>
+
+            {selectedCategory && (
+              <section className="item-section">
+                <h2>{selectedCategory}</h2>
+
+                <div className="loaner-form">
+                  <label htmlFor="item-description">
+                    Item description
+                  </label>
+
+                  <input
+                    id="item-description"
+                    type="text"
+                    value={itemDescription}
+                    onChange={(event) => {
+                      setItemDescription(event.target.value);
+                      setCheckoutUrl("");
+                    }}
+                    placeholder="Example: Midland handheld radio"
+                  />
+
+                  <label htmlFor="item-id">
+                    ID number or notes
+                  </label>
+
+                  <input
+                    id="item-id"
+                    type="text"
+                    value={itemId}
+                    onChange={(event) => {
+                      setItemId(event.target.value);
+                      setCheckoutUrl("");
+                    }}
+                    placeholder="Example: Radio 3"
+                  />
+
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={createCheckoutQr}
+                    disabled={itemDescription.trim().length < 2}
+                  >
+                    Create Checkout QR
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {checkoutUrl && (
+              <section className="qr-section">
+                <h2>Scan to Check Out</h2>
+
+                <div className="qr-code">
+                  <QRCodeSVG value={checkoutUrl} size={240} />
+                </div>
+
+                <p className="checkout-link">{checkoutUrl}</p>
+              </section>
+            )}
+          </>
         )}
 
-        {checkoutUrl && (
-          <section className="qr-section">
-            <h2>Scan to Check Out</h2>
+        {appView === "return" && (
+          <>
+            <h1>Return Loaners</h1>
+            <h2>Select a category</h2>
 
-            <div className="qr-code">
-              <QRCodeSVG value={checkoutUrl} size={240} />
+            <div className="category-grid">
+              {categories.map((category) => (
+                <button
+                  className={`category-button ${
+                    returnCategory === category ? "selected" : ""
+                  }`}
+                  key={category}
+                  type="button"
+                  onClick={() => setReturnCategory(category)}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
 
-            <p className="checkout-link">{checkoutUrl}</p>
-          </section>
+            {returnCategory && (
+              <section className="active-loans-section">
+                <div className="active-loans-heading">
+                  <h2>Checked-Out {returnCategory} Items</h2>
+
+                  <button
+                    className="primary-button"
+                    type="button"
+                    onClick={loadActiveLoaners}
+                    disabled={loanersLoading}
+                  >
+                    {loanersLoading ? "Loading..." : "Refresh"}
+                  </button>
+                </div>
+
+                {loanersError && <p>{loanersError}</p>}
+                {checkinError && <p>{checkinError}</p>}
+
+                {!loanersLoading &&
+                  !loanersError &&
+                  filteredReturnLoans.length === 0 && (
+                    <p>No {returnCategory.toLowerCase()} items are checked out.</p>
+                  )}
+
+                <div className="active-loans-list">
+                  {filteredReturnLoans.map((loan) => (
+                    <article className="active-loan-card" key={loan.rowKey}>
+                      <h3>{loan.item}</h3>
+
+                      <p>
+                        <strong>Borrower:</strong> {loan.borrowerName}
+                      </p>
+
+                      {loan.id && (
+                        <p>
+                          <strong>ID:</strong> {loan.id}
+                        </p>
+                      )}
+
+                      <p>
+                        <strong>Checked out:</strong>{" "}
+                        {new Date(loan.checkedOutAt).toLocaleString()}
+                      </p>
+
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => {
+                          const itemName = loan.id
+                            ? `${loan.item} (${loan.id})`
+                            : loan.item;
+
+                          const confirmed = window.confirm(
+                            `Return ${itemName}?\n\nBorrower: ${loan.borrowerName}`
+                          );
+
+                          if (confirmed) {
+                            handleCheckIn(loan);
+                          }
+                        }}
+                        disabled={checkinRowKey === loan.rowKey}
+                      >
+                        {checkinRowKey === loan.rowKey
+                          ? "Returning..."
+                          : "Return Item"}
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </section>
     </main>
