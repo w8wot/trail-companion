@@ -4,20 +4,26 @@ import Hero from "./components/Hero";
 import LoanerList from "./components/LoanerList";
 
 function App() {
+  const isCheckoutPage = new URLSearchParams(
+    window.location.search
+  ).get("checkout") === "true";
+
   return (
     <>
-      <Navbar />
+      {!isCheckoutPage && <Navbar />}
 
       <main
-  style={{
-    maxWidth: "1100px",
-    margin: "60px auto",
-    padding: "0 20px",
-    textAlign: "center",
-  }}
->
-<LoanerList />
-</main>
+        style={{
+          maxWidth: "1100px",
+          margin: "60px auto",
+          padding: "0 20px",
+          textAlign: "center",
+        }}
+      >
+        <LoanerList />
+      </main>
+
+      {!isCheckoutPage && <Features />}
     </>
   );
 }
