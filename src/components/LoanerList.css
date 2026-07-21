@@ -240,3 +240,68 @@
   text-align: center;
 }
 
+
+
+/* Main loaner page heading */
+.loaners-title {
+  margin-bottom: 20px !important;
+  color: #ffffff !important;
+  font-size: 2rem !important;
+}
+
+/* Check Out / Return mode selector */
+.loaner-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.loaner-mode-button {
+  min-height: 48px;
+  padding: 10px 14px;
+
+  background: #2b2b2b;
+  color: #ffffff;
+
+  border: 2px solid #444;
+  border-radius: 12px;
+
+  font-size: 1rem;
+  font-weight: 800;
+
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.loaner-mode-button:hover {
+  transform: translateY(-1px);
+}
+
+.loaner-mode-button.checkout-mode {
+  border-color: #2e8b57;
+}
+
+.loaner-mode-button.checkout-mode.selected {
+  background: #2e8b57;
+  border-color: #2e8b57;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(46, 139, 87, 0.35);
+}
+
+.loaner-mode-button.return-mode {
+  border-color: #ff7a00;
+}
+
+.loaner-mode-button.return-mode.selected {
+  background: #ff7a00;
+  border-color: #ff7a00;
+  color: #111111;
+  box-shadow: 0 6px 16px rgba(255, 122, 0, 0.35);
+}
+
+.section-heading {
+  margin-bottom: 18px !important;
+  font-size: 1.05rem !important;
+}

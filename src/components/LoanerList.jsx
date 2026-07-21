@@ -13,16 +13,11 @@ const categories = [
 
 function LoanerList() {
   const params = new URLSearchParams(window.location.search);
-  const checkoutApiUrl =
-    import.meta.env.VITE_CHECKOUT_API_URL || "/api/checkout";
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "/api";
 
-  const loanersApiUrl =
-    import.meta.env.VITE_LOANERS_API_URL ||
-    checkoutApiUrl.replace(/\/checkout$/, "/loaners");
-
-  const checkinApiUrl =
-    import.meta.env.VITE_CHECKIN_API_URL ||
-    checkoutApiUrl.replace(/\/checkout$/, "/checkin");
+  const checkoutApiUrl = `${apiBaseUrl}/checkout`;
+  const loanersApiUrl = `${apiBaseUrl}/loaners`;
+  const checkinApiUrl = `${apiBaseUrl}/checkin`;
 
   const isCheckoutPage = params.get("checkout") === "true";
   const checkoutCategory = params.get("category") || "";
@@ -267,9 +262,11 @@ function LoanerList() {
   return (
     <main className="loaner-page">
       <section className="loaner-panel">
-        <div className="category-grid">
+        <h1 className="loaners-title">Loaners</h1>
+
+        <div className="loaner-mode-tabs">
           <button
-            className={`category-button ${
+            className={`loaner-mode-button checkout-mode ${
               appView === "checkout" ? "selected" : ""
             }`}
             type="button"
@@ -279,7 +276,7 @@ function LoanerList() {
           </button>
 
           <button
-            className={`category-button ${
+            className={`loaner-mode-button return-mode ${
               appView === "return" ? "selected" : ""
             }`}
             type="button"
@@ -294,8 +291,7 @@ function LoanerList() {
 
         {appView === "checkout" && (
           <>
-            <h1>Loaner Checkout</h1>
-            <h2>Select a category</h2>
+            <h2 className="section-heading">Select a category</h2>
 
             <div className="category-grid">
               {categories.map((category) => (
@@ -380,8 +376,7 @@ function LoanerList() {
 
         {appView === "return" && (
           <>
-            <h1>Return Loaners</h1>
-            <h2>Select a category</h2>
+            <h2 className="section-heading">Select a category</h2>
 
             <div className="category-grid">
               {categories.map((category) => (
