@@ -306,7 +306,9 @@ function LoanerList() {
                   key={category}
                   type="button"
                   onClick={() => {
-                    setSelectedCategory(category);
+                    setSelectedCategory((current) =>
+                      current === category ? "" : category
+                    );
                     setCheckoutUrl("");
                   }}
                 >
@@ -389,7 +391,11 @@ function LoanerList() {
                   }`}
                   key={category}
                   type="button"
-                  onClick={() => setReturnCategory(category)}
+                  onClick={() =>
+                    setReturnCategory((current) =>
+                      current === category ? "" : category
+                    )
+                  }
                 >
                   {category}
                 </button>
