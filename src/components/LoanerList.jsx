@@ -121,8 +121,8 @@ function LoanerList() {
     });
 
     setCheckoutUrl(
-      `${window.location.origin}/?${checkoutParams.toString()}`
-    );
+  `${window.location.origin}${window.location.pathname}?${checkoutParams.toString()}`
+);
   }
 
   async function handleBorrowerSubmit(event) {
