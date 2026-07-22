@@ -98,10 +98,8 @@ If you have ideas that would help volunteer organizations, off-road clubs, amate
 
 ## License
 
-## License
-
 This project is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).
-See the [LICENSE](LICENSE.md) file for the full terms.
+See the [LICENSE](LICENSE) file for the full terms.
 
 In short: the source is available for anyone to view, learn from, and use
 for noncommercial purposes (personal projects, education, nonprofits,
