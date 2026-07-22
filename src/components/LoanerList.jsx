@@ -28,10 +28,12 @@ function LoanerList() {
   const [itemDescription, setItemDescription] = useState("");
   const [itemId, setItemId] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [checkoutCreatedAt, setCheckoutCreatedAt] = useState("");
 
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [checkoutSyncState, setCheckoutSyncState] = useState("idle");
+  const [checkoutError, setCheckoutError] = useState("");
   const [activeLoaners, setActiveLoaners] = useState([]);
   const [loanersLoading, setLoanersLoading] = useState(true);
   const [loanersError, setLoanersError] = useState("");
@@ -74,10 +76,65 @@ function LoanerList() {
   }
 
   useEffect(() => {
-    if (!isCheckoutPage) {
-      loadActiveLoaners();
+    if (isCheckoutPage) {
+      return;
     }
+
+    loadActiveLoaners();
+
+    const refreshTimer = setInterval(() => {
+      console.log("Polling loaners...");
+      loadActiveLoaners();
+    }, 3000);
+
+    return () => clearInterval(refreshTimer);
   }, [isCheckoutPage]);
+
+  useEffect(() => {
+    if (
+      isCheckoutPage ||
+      !checkoutUrl ||
+      !checkoutCreatedAt
+    ) {
+      return;
+    }
+
+    const checkoutWasCompleted = activeLoaners.some((loan) => {
+      const sameCategory = loan.category === selectedCategory;
+      const sameItem =
+        loan.item?.trim().toLowerCase() ===
+        itemDescription.trim().toLowerCase();
+      const sameId =
+        (loan.id || "").trim().toLowerCase() ===
+        itemId.trim().toLowerCase();
+      const happenedAfterQrCreation =
+        new Date(loan.checkedOutAt).getTime() >=
+        new Date(checkoutCreatedAt).getTime();
+
+      return (
+        sameCategory &&
+        sameItem &&
+        sameId &&
+        happenedAfterQrCreation
+      );
+    });
+
+    if (checkoutWasCompleted) {
+      setCheckoutUrl("");
+      setCheckoutCreatedAt("");
+      setSelectedCategory("");
+      setItemDescription("");
+      setItemId("");
+    }
+  }, [
+    activeLoaners,
+    checkoutUrl,
+    checkoutCreatedAt,
+    isCheckoutPage,
+    selectedCategory,
+    itemDescription,
+    itemId,
+  ]);
 
   async function handleCheckIn(loan) {
     setCheckinRowKey(loan.rowKey);
@@ -121,8 +178,9 @@ function LoanerList() {
     });
 
     setCheckoutUrl(
-  `${window.location.origin}${window.location.pathname}?${checkoutParams.toString()}`
-);
+      `${window.location.origin}${window.location.pathname}?${checkoutParams.toString()}`
+    );
+    setCheckoutCreatedAt(new Date().toISOString());
   }
 
   async function handleBorrowerSubmit(event) {
@@ -134,6 +192,7 @@ function LoanerList() {
 
     setCheckoutConfirmed(true);
     setCheckoutSyncState("saving");
+    setCheckoutError("");
 
     try {
       const response = await fetch(checkoutApiUrl, {
@@ -155,8 +214,10 @@ function LoanerList() {
       }
 
       setCheckoutSyncState("saved");
+
     } catch (error) {
       console.error("Unable to sync checkout to Azure Functions", error);
+      setCheckoutError(error instanceof Error ? error.message : String(error));
       setCheckoutSyncState("error");
     }
   }
@@ -192,7 +253,7 @@ function LoanerList() {
                 {checkoutSyncState === "saved"
                   ? "Saved to Azure Functions"
                   : checkoutSyncState === "error"
-                    ? "Saved locally, but Azure Functions sync failed"
+                    ? `Azure sync failed: ${checkoutError || "Unknown error"}`
                     : "Saving to Azure Functions..."}
               </p>
             </div>
