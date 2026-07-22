@@ -1,6 +1,6 @@
 # Trail Companion
 
-Trail Companion is an open-source web application designed to simplify loaning equipment during off-road events, club rides, training classes, and other group activities.
+Trail Companion is a source-available web application designed to simplify loaning equipment during off-road events, club rides, training classes, and other group activities.
 
 Instead of manually tracking who borrowed radios or recovery gear, organizers generate a QR code for each item. Borrowers scan the code, enter their name, and the checkout is immediately recorded. The organizer's screen automatically resets and is ready for the next borrower.
 
@@ -98,6 +98,18 @@ If you have ideas that would help volunteer organizations, off-road clubs, amate
 
 ## License
 
-This project is licensed under the MIT License.
+## License
 
-See the LICENSE file for details.
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).
+See the [LICENSE](LICENSE.md) file for the full terms.
+
+In short: the source is available for anyone to view, learn from, and use
+for noncommercial purposes (personal projects, education, nonprofits,
+etc.). **Commercial use — including running Trail Companion for a club,
+business, or organization, whether or not a fee is charged to
+members — is not covered by this license** and requires a separate
+commercial license.
+
+Interested in a branded deployment for your club (custom name, colors,
+and hosted setup)? Open an issue or reach out directly to discuss
+licensing.
