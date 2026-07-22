@@ -1,22 +1,103 @@
-# React + Vite
+# Trail Companion
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Trail Companion is an open-source web application designed to simplify loaning equipment during off-road events, club rides, training classes, and other group activities.
 
-Currently, two official plugins are available:
+Instead of manually tracking who borrowed radios or recovery gear, organizers generate a QR code for each item. Borrowers scan the code, enter their name, and the checkout is immediately recorded. The organizer's screen automatically resets and is ready for the next borrower.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 📱 QR code equipment checkout
+- 👤 Mobile-friendly borrower interface
+- ☁️ Azure Functions backend
+- 💾 Azure Table Storage
+- 🔄 Automatic organizer updates
+- 📋 Equipment return/check-in
+- 🌐 GitHub Pages frontend
+- 📱 Responsive design for phones, tablets, and desktops
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Current Workflow
 
-## Azure Functions checkout sync
+### Organizer
 
-The loaner checkout flow can POST confirmed checkouts to an Azure Functions HTTP trigger at `/api/checkout`.
+1. Select a category
+2. Enter the equipment description
+3. Optionally enter an ID or inventory number
+4. Generate a QR code
 
-For local development or a separate function app, set `VITE_CHECKOUT_API_URL` to the full endpoint URL before starting Vite.
+### Borrower
+
+1. Scan the QR code
+2. Enter their name
+3. Submit the checkout
+
+### System
+
+- Checkout is stored in Azure
+- Organizer display automatically clears the QR
+- Equipment becomes available in the Return screen
+- Item can later be checked back in
+
+---
+
+## Technology Stack
+
+### Frontend
+
+- React
+- Vite
+- QRCode.react
+
+### Backend
+
+- Azure Functions (Node.js)
+- Azure Table Storage
+
+### Hosting
+
+- GitHub Pages
+- Microsoft Azure
+
+---
+
+## Project Status
+
+Current development focuses on creating a simple, reliable checkout system before expanding into inventory management and event features.
+
+Implemented:
+
+- ✅ QR checkout workflow
+- ✅ Azure synchronization
+- ✅ Automatic organizer refresh
+- ✅ Equipment return/check-in
+- ✅ Mobile-friendly interface
+
+Planned:
+
+- Event sessions
+- Inventory management
+- Checkout history
+- Search and filtering
+- Club customization
+- Authentication
+- Reporting
+- Offline support
+
+---
+
+## Contributing
+
+Suggestions, issues, and pull requests are welcome.
+
+If you have ideas that would help volunteer organizations, off-road clubs, amateur radio groups, or other communities manage shared equipment, please open an issue.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+See the LICENSE file for details.
