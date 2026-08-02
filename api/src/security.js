@@ -51,7 +51,7 @@ function preflightResponse(request, methods) {
   }
 
   return {
-    status: 204,
+    status: 200,
     headers: corsHeaders(request, methods),
   };
 }
