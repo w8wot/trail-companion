@@ -66,9 +66,11 @@ function LoanerList() {
     [checkoutCategory, checkoutItem, checkoutId, checkoutSessionId]
   );
 
-  async function loadActiveLoaners() {
-    setLoanersLoading(true);
-    setLoanersError("");
+  async function loadActiveLoaners({ background = false } = {}) {
+    if (!background) {
+      setLoanersLoading(true);
+      setLoanersError("");
+    }
 
     try {
       const response = await fetch(loanersApiUrl);
@@ -79,11 +81,16 @@ function LoanerList() {
 
       const data = await response.json();
       setActiveLoaners(data.loaners || []);
+      setLoanersError("");
     } catch (error) {
       console.error("Unable to load active loaners", error);
-      setLoanersError("Unable to load active loans.");
+      if (!background) {
+        setLoanersError("Unable to load active loans.");
+      }
     } finally {
-      setLoanersLoading(false);
+      if (!background) {
+        setLoanersLoading(false);
+      }
     }
   }
 
@@ -96,7 +103,7 @@ function LoanerList() {
 
     const refreshTimer = setInterval(() => {
       console.log("Polling loaners...");
-      loadActiveLoaners();
+      loadActiveLoaners({ background: true });
     }, 3000);
 
     return () => clearInterval(refreshTimer);
