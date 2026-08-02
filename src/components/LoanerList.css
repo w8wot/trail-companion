@@ -240,6 +240,58 @@
   text-align: center;
 }
 
+.qr-expiration,
+.access-explanation {
+  color: #b8bec9;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.form-error {
+  margin: 8px 0 0;
+  color: #ff8e8e;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.organizer-access-panel {
+  max-width: 460px;
+  padding: 24px;
+  background: #1c1c1c;
+  border: 1px solid #3a3a3a;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.organizer-session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  background: #1c1c1c;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  color: #b8bec9;
+  font-size: 0.85rem;
+}
+
+.organizer-session-bar button {
+  padding: 7px 12px;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #666666;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.organizer-session-bar button:hover {
+  border-color: #ff7a00;
+}
+
 
 
 /* Main loaner page heading */

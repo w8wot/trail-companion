@@ -1,10 +1,12 @@
 const { app } = require("@azure/functions");
-const { TableClient } = require("@azure/data-tables");
-
-const tableClient = TableClient.fromConnectionString(
-  process.env.AzureWebJobsStorage,
-  "LoanCheckouts"
-);
+const {
+  authenticateOrganizer,
+  corsHeaders,
+  isOriginAllowed,
+  originDeniedResponse,
+  preflightResponse,
+} = require("../security");
+const { ensureLoansTable, loansTable } = require("../loansTable");
 
 app.http("checkin", {
   methods: ["POST", "OPTIONS"],
@@ -12,37 +14,45 @@ app.http("checkin", {
   route: "checkin",
 
   handler: async (request, context) => {
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    };
+    const methods = "POST, OPTIONS";
+    const headers = corsHeaders(request, methods);
 
     if (request.method === "OPTIONS") {
+      return preflightResponse(request, methods);
+    }
+
+    if (!isOriginAllowed(request)) {
+      return originDeniedResponse(request, methods);
+    }
+
+    const organizer = authenticateOrganizer(request);
+
+    if (!organizer.ok) {
       return {
-        status: 204,
-        headers: corsHeaders,
+        status: organizer.status,
+        headers,
+        jsonBody: { error: organizer.error },
       };
     }
 
     try {
       const body = await request.json();
-      const partitionKey = String(body.partitionKey || body.category || "").trim();
       const rowKey = String(body.rowKey || "").trim();
 
-      if (!partitionKey || !rowKey) {
+      if (!/^[0-9a-f-]{36}$/i.test(rowKey)) {
         return {
           status: 400,
-          headers: corsHeaders,
+          headers,
           jsonBody: {
-            error: "category and rowKey are required",
+            error: "A valid loan ID is required",
           },
         };
       }
 
-      await tableClient.updateEntity(
+      await ensureLoansTable();
+      await loansTable.updateEntity(
         {
-          partitionKey,
+          partitionKey: organizer.tenantId,
           rowKey,
           status: "checked-in",
           checkedInAt: new Date().toISOString(),
@@ -52,7 +62,7 @@ app.http("checkin", {
 
       return {
         status: 200,
-        headers: corsHeaders,
+        headers,
         jsonBody: {
           ok: true,
           rowKey,
@@ -63,10 +73,13 @@ app.http("checkin", {
       context.error("Unable to check in loaner", error);
 
       return {
-        status: 500,
-        headers: corsHeaders,
+        status: error.statusCode === 404 ? 404 : 500,
+        headers,
         jsonBody: {
-          error: "Unable to check in loaner",
+          error:
+            error.statusCode === 404
+              ? "Loan not found in this workspace"
+              : "Unable to check in loaner",
         },
       };
     }

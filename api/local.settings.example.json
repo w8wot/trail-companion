@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "COMPANION_TENANTS": "local-alpha=replace-with-sha256-key-hash",
+    "COMPANION_SESSION_SECRET": "replace-with-a-random-secret-at-least-32-characters-long",
+    "COMPANION_ALLOWED_ORIGINS": "http://localhost:5173",
+    "COMPANION_QR_TTL_MINUTES": "15"
+  }
+}

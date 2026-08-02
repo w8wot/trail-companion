@@ -2,9 +2,16 @@ import Navbar from "./components/Navbar";
 import LoanerList from "./components/LoanerList";
 
 function App() {
-  const isCheckoutPage = new URLSearchParams(
+  const searchCheckout = new URLSearchParams(
     window.location.search
-  ).get("checkout") === "true";
+  ).get("checkout");
+  const hashCheckout = new URLSearchParams(
+    window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : ""
+  ).get("checkout");
+  const isCheckoutPage =
+    searchCheckout === "true" || hashCheckout === "true";
 
   return (
     <>

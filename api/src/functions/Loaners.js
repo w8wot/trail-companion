@@ -1,10 +1,12 @@
 const { app } = require("@azure/functions");
-const { TableClient } = require("@azure/data-tables");
-
-const tableClient = TableClient.fromConnectionString(
-  process.env.AzureWebJobsStorage,
-  "LoanCheckouts"
-);
+const {
+  authenticateOrganizer,
+  corsHeaders,
+  isOriginAllowed,
+  originDeniedResponse,
+  preflightResponse,
+} = require("../security");
+const { ensureLoansTable, loansTable } = require("../loansTable");
 
 app.http("loaners", {
   methods: ["GET", "OPTIONS"],
@@ -12,23 +14,36 @@ app.http("loaners", {
   route: "loaners",
 
   handler: async (request, context) => {
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    };
+    const methods = "GET, OPTIONS";
+    const headers = corsHeaders(request, methods);
 
     if (request.method === "OPTIONS") {
+      return preflightResponse(request, methods);
+    }
+
+    if (!isOriginAllowed(request)) {
+      return originDeniedResponse(request, methods);
+    }
+
+    const organizer = authenticateOrganizer(request);
+
+    if (!organizer.ok) {
       return {
-        status: 204,
-        headers: corsHeaders,
+        status: organizer.status,
+        headers,
+        jsonBody: { error: organizer.error },
       };
     }
 
     try {
-      const loaners = [];
+      await ensureLoansTable();
 
-      for await (const entity of tableClient.listEntities()) {
+      const loaners = [];
+      const filter = `PartitionKey eq '${organizer.tenantId}'`;
+
+      for await (const entity of loansTable.listEntities({
+        queryOptions: { filter },
+      })) {
         if (entity.status === "checked-out") {
           loaners.push({
             rowKey: entity.rowKey,
@@ -51,17 +66,15 @@ app.http("loaners", {
 
       return {
         status: 200,
-        headers: corsHeaders,
-        jsonBody: {
-          loaners,
-        },
+        headers,
+        jsonBody: { loaners },
       };
     } catch (error) {
       context.error("Unable to load active loaners", error);
 
       return {
         status: 500,
-        headers: corsHeaders,
+        headers,
         jsonBody: {
           error: "Unable to load active loaners",
         },

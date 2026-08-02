@@ -1,11 +1,12 @@
 const { app } = require("@azure/functions");
-const { TableClient } = require("@azure/data-tables");
-const crypto = require("crypto");
-
-const tableClient = TableClient.fromConnectionString(
-  process.env.AzureWebJobsStorage,
-  "LoanCheckouts"
-);
+const {
+  corsHeaders,
+  isOriginAllowed,
+  originDeniedResponse,
+  preflightResponse,
+  verifyCheckoutToken,
+} = require("../security");
+const { ensureLoansTable, loansTable } = require("../loansTable");
 
 app.http("checkout", {
   methods: ["POST", "OPTIONS"],
@@ -13,86 +14,99 @@ app.http("checkout", {
   route: "checkout",
 
   handler: async (request, context) => {
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    };
+    const methods = "POST, OPTIONS";
+    const headers = corsHeaders(request, methods);
 
     if (request.method === "OPTIONS") {
-      return {
-        status: 204,
-        headers: corsHeaders,
-      };
+      return preflightResponse(request, methods);
+    }
+
+    if (!isOriginAllowed(request)) {
+      return originDeniedResponse(request, methods);
     }
 
     try {
       const body = await request.json();
-
       const borrowerName = String(body.borrowerName || "").trim();
-      const category = String(body.category || "").trim();
-      const item = String(body.item || "").trim();
-      const id = String(body.id || "").trim();
-      const checkoutSessionId = String(
-        body.checkoutSessionId || ""
-      ).trim();
-      const checkedOutAt =
-        body.checkedOutAt || new Date().toISOString();
+      const checkoutToken = String(body.checkoutToken || "");
 
       if (
         borrowerName.length < 2 ||
-        category.length < 2 ||
-        item.length < 2
+        borrowerName.length > 100 ||
+        !checkoutToken ||
+        checkoutToken.length > 4096
       ) {
         return {
           status: 400,
-          headers: corsHeaders,
-          jsonBody: {
-            error: "borrowerName, category, and item are required",
-          },
+          headers,
+          jsonBody: { error: "Enter a valid name and use a valid checkout link" },
         };
       }
 
-      try {
-        await tableClient.createTable();
-      } catch (error) {
-        if (error.statusCode !== 409) {
-          throw error;
-        }
+      const verification = verifyCheckoutToken(checkoutToken);
+
+      if (!verification.ok) {
+        return {
+          status: verification.status,
+          headers,
+          jsonBody: { error: verification.error },
+        };
       }
 
-      const rowKey = crypto.randomUUID();
-
-      await tableClient.createEntity({
-        partitionKey: category,
-        rowKey,
-        borrowerName,
+      const {
+        tenantId,
+        sessionId,
         category,
         item,
         id,
-        checkoutSessionId,
-        checkedOutAt,
-        status: "checked-out",
-      });
+      } = verification.payload;
+      const checkedOutAt = new Date().toISOString();
 
-      context.log("Checkout saved", {
-        rowKey,
-        borrowerName,
-        category,
-        item,
-      });
+      await ensureLoansTable();
 
-      return {
-        status: 200,
-        headers: corsHeaders,
-        jsonBody: {
-          ok: true,
-          rowKey,
+      try {
+        await loansTable.createEntity({
+          partitionKey: tenantId,
+          rowKey: sessionId,
           borrowerName,
           category,
           item,
           id,
-          checkoutSessionId,
+          checkoutSessionId: sessionId,
+          checkedOutAt,
+          status: "checked-out",
+        });
+      } catch (error) {
+        if (error.statusCode === 409) {
+          return {
+            status: 409,
+            headers,
+            jsonBody: {
+              error: "This checkout QR has already been used",
+            },
+          };
+        }
+
+        throw error;
+      }
+
+      context.log("Checkout saved", {
+        tenantId,
+        sessionId,
+        category,
+      });
+
+      return {
+        status: 200,
+        headers,
+        jsonBody: {
+          ok: true,
+          rowKey: sessionId,
+          borrowerName,
+          category,
+          item,
+          id,
+          checkoutSessionId: sessionId,
           checkedOutAt,
         },
       };
@@ -101,7 +115,7 @@ app.http("checkout", {
 
       return {
         status: 500,
-        headers: corsHeaders,
+        headers,
         jsonBody: {
           error: "Unable to save checkout",
         },

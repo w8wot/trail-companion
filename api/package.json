@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "start": "func start",
-    "test": "echo \"No tests yet...\""
+    "test": "node --test"
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.2",

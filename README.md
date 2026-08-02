@@ -63,6 +63,27 @@ Instead of manually tracking who borrowed radios or recovery gear, organizers ge
 
 ---
 
+## Alpha Access and Data Protection
+
+The organizer interface uses a private workspace ID and organizer access
+key. Each workspace is stored in its own Azure Table Storage partition, so
+organizers can only list or return loans from their assigned workspace.
+
+Organizer keys are entered at runtime and are never stored in the source,
+frontend build, or borrower QR. Borrower QR links use signed, expiring,
+one-use checkout tokens. Active-loan responses are marked `no-store`.
+
+Required Azure Functions application settings:
+
+- `COMPANION_TENANTS` — comma-separated `workspace-id=sha256-key-hash` entries
+- `COMPANION_SESSION_SECRET` — a random secret of at least 32 characters
+- `COMPANION_ALLOWED_ORIGINS` — comma-separated approved frontend origins
+- `COMPANION_QR_TTL_MINUTES` — optional QR lifetime from 1–60 minutes
+
+Never commit organizer keys, the session secret, or `local.settings.json`.
+
+---
+
 ## Project Status
 
 Current development focuses on creating a simple, reliable checkout system before expanding into inventory management and event features.

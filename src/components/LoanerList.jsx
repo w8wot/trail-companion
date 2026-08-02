@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import "./LoanerList.css";
 
@@ -11,40 +11,84 @@ const categories = [
   "Other",
 ];
 
-function createCheckoutSessionId() {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
+const organizerSessionStorageKey = "companion-organizer-access";
+
+function getCheckoutParams() {
+  const hashParams = new URLSearchParams(
+    window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : ""
+  );
+
+  if (hashParams.get("checkout") === "true") {
+    return hashParams;
   }
 
-  return `${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  return new URLSearchParams(window.location.search);
+}
+
+function getStoredOrganizerAccess() {
+  try {
+    const storedAccess = JSON.parse(
+      sessionStorage.getItem(organizerSessionStorageKey) || "null"
+    );
+
+    if (storedAccess?.tenantId && storedAccess?.key) {
+      return storedAccess;
+    }
+  } catch {
+    sessionStorage.removeItem(organizerSessionStorageKey);
+  }
+
+  return null;
+}
+
+async function getResponseError(response, fallbackMessage) {
+  try {
+    const data = await response.json();
+    return data.error || fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
 }
 
 function LoanerList() {
-  const params = new URLSearchParams(window.location.search);
+  const params = getCheckoutParams();
   const apiBaseUrl = import.meta.env.VITE_API_URL || "/api";
 
   const checkoutApiUrl = `${apiBaseUrl}/checkout`;
   const loanersApiUrl = `${apiBaseUrl}/loaners`;
   const checkinApiUrl = `${apiBaseUrl}/checkin`;
+  const loanSessionApiUrl = `${apiBaseUrl}/loan-session`;
 
   const isCheckoutPage = params.get("checkout") === "true";
   const checkoutCategory = params.get("category") || "";
   const checkoutItem = params.get("item") || "";
   const checkoutId = params.get("id") || "";
   const checkoutSessionId = params.get("session") || "";
+  const checkoutToken = params.get("token") || "";
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [itemId, setItemId] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
   const [activeCheckoutSessionId, setActiveCheckoutSessionId] = useState("");
+  const [checkoutExpiresAt, setCheckoutExpiresAt] = useState("");
+  const [qrCreationState, setQrCreationState] = useState("idle");
+  const [qrCreationError, setQrCreationError] = useState("");
 
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [checkoutSyncState, setCheckoutSyncState] = useState("idle");
   const [checkoutError, setCheckoutError] = useState("");
+  const [completedCheckout, setCompletedCheckout] = useState(null);
+  const [organizerAccess, setOrganizerAccess] = useState(
+    getStoredOrganizerAccess
+  );
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [organizerKey, setOrganizerKey] = useState("");
+  const [accessState, setAccessState] = useState("idle");
+  const [accessError, setAccessError] = useState("");
   const [activeLoaners, setActiveLoaners] = useState([]);
   const [loanersLoading, setLoanersLoading] = useState(true);
   const [loanersError, setLoanersError] = useState("");
@@ -55,59 +99,165 @@ function LoanerList() {
 
   const cleanedBorrowerName = borrowerName.trim();
   const borrowerNameIsValid = cleanedBorrowerName.length >= 2;
+  const organizerHeaders = useMemo(
+    () =>
+      organizerAccess
+        ? {
+            Authorization: `Bearer ${organizerAccess.key}`,
+            "X-Companion-Tenant": organizerAccess.tenantId,
+          }
+        : {},
+    [organizerAccess]
+  );
 
   const decodedCheckout = useMemo(
     () => ({
-      category: decodeURIComponent(checkoutCategory),
-      item: decodeURIComponent(checkoutItem),
-      id: decodeURIComponent(checkoutId),
+      category: checkoutCategory,
+      item: checkoutItem,
+      id: checkoutId,
       sessionId: checkoutSessionId,
     }),
     [checkoutCategory, checkoutItem, checkoutId, checkoutSessionId]
   );
 
-  async function loadActiveLoaners({ background = false } = {}) {
-    if (!background) {
-      setLoanersLoading(true);
-      setLoanersError("");
-    }
+  const clearGeneratedCheckout = useCallback(() => {
+    setCheckoutUrl("");
+    setActiveCheckoutSessionId("");
+    setCheckoutExpiresAt("");
+    setQrCreationState("idle");
+    setQrCreationError("");
+  }, []);
 
-    try {
-      const response = await fetch(loanersApiUrl);
+  const lockOrganizer = useCallback(
+    (message = "") => {
+      sessionStorage.removeItem(organizerSessionStorageKey);
+      clearGeneratedCheckout();
+      setOrganizerAccess(null);
+      setActiveLoaners([]);
+      setReturnCategory("");
+      setWorkspaceId("");
+      setOrganizerKey("");
+      setAccessState("idle");
+      setAccessError(message);
+    },
+    [clearGeneratedCheckout]
+  );
 
-      if (!response.ok) {
-        throw new Error(`Loaners API returned ${response.status}`);
-      }
+  async function handleOrganizerUnlock(event) {
+    event.preventDefault();
 
-      const data = await response.json();
-      setActiveLoaners(data.loaners || []);
-      setLoanersError("");
-    } catch (error) {
-      console.error("Unable to load active loaners", error);
-      if (!background) {
-        setLoanersError("Unable to load active loans.");
-      }
-    } finally {
-      if (!background) {
-        setLoanersLoading(false);
-      }
-    }
-  }
+    const tenantId = workspaceId.trim().toLowerCase();
+    const key = organizerKey.trim();
 
-  useEffect(() => {
-    if (isCheckoutPage) {
+    if (!tenantId || !key) {
       return;
     }
 
-    loadActiveLoaners();
+    setAccessState("checking");
+    setAccessError("");
+
+    try {
+      const response = await fetch(loanersApiUrl, {
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "X-Companion-Tenant": tenantId,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await getResponseError(response, "Unable to unlock this workspace")
+        );
+      }
+
+      const data = await response.json();
+      const access = { tenantId, key };
+
+      sessionStorage.setItem(
+        organizerSessionStorageKey,
+        JSON.stringify(access)
+      );
+      setOrganizerAccess(access);
+      setActiveLoaners(data.loaners || []);
+      setLoanersLoading(false);
+      setWorkspaceId("");
+      setOrganizerKey("");
+      setAccessState("idle");
+    } catch (error) {
+      setAccessError(
+        error instanceof Error
+          ? error.message
+          : "Unable to unlock this workspace"
+      );
+      setAccessState("idle");
+    }
+  }
+
+  const loadActiveLoaners = useCallback(
+    async ({ background = false } = {}) => {
+      if (!organizerAccess) {
+        return;
+      }
+
+      if (!background) {
+        setLoanersLoading(true);
+        setLoanersError("");
+      }
+
+      try {
+        const response = await fetch(loanersApiUrl, {
+          headers: organizerHeaders,
+        });
+
+        if (!response.ok) {
+          const message = await getResponseError(
+            response,
+            "Unable to load active loans"
+          );
+
+          if (response.status === 401) {
+            lockOrganizer(message);
+            return;
+          }
+
+          throw new Error(message);
+        }
+
+        const data = await response.json();
+        setActiveLoaners(data.loaners || []);
+        setLoanersError("");
+      } catch (error) {
+        console.error("Unable to load active loaners", error);
+        if (!background) {
+          setLoanersError("Unable to load active loans.");
+        }
+      } finally {
+        if (!background) {
+          setLoanersLoading(false);
+        }
+      }
+    },
+    [loanersApiUrl, lockOrganizer, organizerAccess, organizerHeaders]
+  );
+
+  useEffect(() => {
+    if (isCheckoutPage || !organizerAccess) {
+      return;
+    }
+
+    const initialRefreshTimer = setTimeout(() => {
+      loadActiveLoaners();
+    }, 0);
 
     const refreshTimer = setInterval(() => {
-      console.log("Polling loaners...");
       loadActiveLoaners({ background: true });
     }, 3000);
 
-    return () => clearInterval(refreshTimer);
-  }, [isCheckoutPage]);
+    return () => {
+      clearTimeout(initialRefreshTimer);
+      clearInterval(refreshTimer);
+    };
+  }, [isCheckoutPage, loadActiveLoaners, organizerAccess]);
 
   useEffect(() => {
     if (
@@ -123,11 +273,17 @@ function LoanerList() {
     );
 
     if (checkoutWasCompleted) {
-      setCheckoutUrl("");
-      setActiveCheckoutSessionId("");
-      setSelectedCategory("");
-      setItemDescription("");
-      setItemId("");
+      const resetTimer = setTimeout(() => {
+        setCheckoutUrl("");
+        setActiveCheckoutSessionId("");
+        setCheckoutExpiresAt("");
+        setQrCreationState("idle");
+        setSelectedCategory("");
+        setItemDescription("");
+        setItemId("");
+      }, 0);
+
+      return () => clearTimeout(resetTimer);
     }
   }, [
     activeLoaners,
@@ -145,54 +301,111 @@ function LoanerList() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...organizerHeaders,
         },
         body: JSON.stringify({
-          category: loan.category,
           rowKey: loan.rowKey,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Check-in API returned ${response.status}`);
+        const message = await getResponseError(
+          response,
+          "Unable to return this item"
+        );
+
+        if (response.status === 401) {
+          lockOrganizer(message);
+          return;
+        }
+
+        throw new Error(message);
       }
 
       await loadActiveLoaners();
     } catch (error) {
       console.error("Unable to check in loaner", error);
-      setCheckinError("Unable to return this item. Please try again.");
+      setCheckinError(
+        error instanceof Error
+          ? error.message
+          : "Unable to return this item. Please try again."
+      );
     } finally {
       setCheckinRowKey("");
     }
   }
 
-  function createCheckoutQr() {
+  async function createCheckoutQr() {
     if (!selectedCategory || itemDescription.trim().length < 2) {
       return;
     }
 
-    const sessionId = createCheckoutSessionId();
-    const checkoutParams = new URLSearchParams({
-      checkout: "true",
-      category: selectedCategory,
-      item: itemDescription.trim(),
-      id: itemId.trim(),
-      session: sessionId,
-    });
+    setQrCreationState("creating");
+    setQrCreationError("");
+    setCheckoutUrl("");
+    setActiveCheckoutSessionId("");
 
-    setCheckoutUrl(
-      `${window.location.origin}${window.location.pathname}?${checkoutParams.toString()}`
-    );
-    setActiveCheckoutSessionId(sessionId);
+    try {
+      const response = await fetch(loanSessionApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...organizerHeaders,
+        },
+        body: JSON.stringify({
+          category: selectedCategory,
+          item: itemDescription.trim(),
+          id: itemId.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await getResponseError(
+          response,
+          "Unable to create a secure checkout QR"
+        );
+
+        if (response.status === 401) {
+          lockOrganizer(message);
+          return;
+        }
+
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      const checkoutParams = new URLSearchParams({
+        checkout: "true",
+        category: selectedCategory,
+        item: itemDescription.trim(),
+        id: itemId.trim(),
+        session: data.sessionId,
+        token: data.token,
+      });
+
+      setCheckoutUrl(
+        `${window.location.origin}${window.location.pathname}#${checkoutParams.toString()}`
+      );
+      setActiveCheckoutSessionId(data.sessionId);
+      setCheckoutExpiresAt(data.expiresAt);
+      setQrCreationState("ready");
+    } catch (error) {
+      setQrCreationError(
+        error instanceof Error
+          ? error.message
+          : "Unable to create a secure checkout QR"
+      );
+      setQrCreationState("error");
+    }
   }
 
   async function handleBorrowerSubmit(event) {
     event.preventDefault();
 
-    if (!borrowerNameIsValid) {
+    if (!borrowerNameIsValid || !checkoutToken) {
       return;
     }
 
-    setCheckoutConfirmed(true);
     setCheckoutSyncState("saving");
     setCheckoutError("");
 
@@ -204,22 +417,23 @@ function LoanerList() {
         },
         body: JSON.stringify({
           borrowerName: cleanedBorrowerName,
-          category: decodedCheckout.category,
-          item: decodedCheckout.item,
-          id: decodedCheckout.id,
-          checkoutSessionId: decodedCheckout.sessionId,
-          checkedOutAt: new Date().toISOString(),
+          checkoutToken,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Checkout API returned ${response.status}`);
+        throw new Error(
+          await getResponseError(response, "Unable to record checkout")
+        );
       }
 
+      const data = await response.json();
+      setCompletedCheckout(data);
       setCheckoutSyncState("saved");
-
+      setCheckoutConfirmed(true);
+      window.history.replaceState(null, "", window.location.pathname);
     } catch (error) {
-      console.error("Unable to sync checkout to Azure Functions", error);
+      console.error("Unable to record checkout", error);
       setCheckoutError(error instanceof Error ? error.message : String(error));
       setCheckoutSyncState("error");
     }
@@ -238,26 +452,21 @@ function LoanerList() {
 
             <div className="checkout-summary">
               <p>
-                <strong>Category:</strong> {decodedCheckout.category}
+                <strong>Category:</strong> {completedCheckout.category}
               </p>
 
               <p>
-                <strong>Item:</strong> {decodedCheckout.item}
+                <strong>Item:</strong> {completedCheckout.item}
               </p>
 
-              {decodedCheckout.id && (
+              {completedCheckout.id && (
                 <p>
-                  <strong>ID:</strong> {decodedCheckout.id}
+                  <strong>ID:</strong> {completedCheckout.id}
                 </p>
               )}
 
               <p>
-                <strong>Sync status:</strong>{" "}
-                {checkoutSyncState === "saved"
-                  ? "Saved to Azure Functions"
-                  : checkoutSyncState === "error"
-                    ? `Azure sync failed: ${checkoutError || "Unknown error"}`
-                    : "Saving to Azure Functions..."}
+                <strong>Status:</strong> Checkout recorded securely
               </p>
             </div>
           </section>
@@ -307,12 +516,78 @@ function LoanerList() {
             <button
               className="primary-button"
               type="submit"
-              disabled={!borrowerNameIsValid}
+              disabled={
+                !borrowerNameIsValid ||
+                !checkoutToken ||
+                checkoutSyncState === "saving"
+              }
             >
               {checkoutSyncState === "saving"
                 ? "Saving..."
                 : "Confirm Checkout"}
             </button>
+
+            {!checkoutToken && (
+              <p className="form-error">
+                This checkout link is invalid. Ask the organizer for a new QR.
+              </p>
+            )}
+
+            {checkoutSyncState === "error" && (
+              <p className="form-error">{checkoutError}</p>
+            )}
+          </form>
+        </section>
+      </main>
+    );
+  }
+
+  if (!organizerAccess) {
+    return (
+      <main className="loaner-page">
+        <section className="loaner-panel organizer-access-panel">
+          <h1>Organizer Access</h1>
+
+          <p className="access-explanation">
+            Enter the private workspace details provided for this organizer.
+          </p>
+
+          <form className="loaner-form" onSubmit={handleOrganizerUnlock}>
+            <label htmlFor="workspace-id">Workspace ID</label>
+            <input
+              id="workspace-id"
+              type="text"
+              value={workspaceId}
+              onChange={(event) => setWorkspaceId(event.target.value)}
+              placeholder="Example: club-alpha"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck="false"
+            />
+
+            <label htmlFor="organizer-key">Organizer access key</label>
+            <input
+              id="organizer-key"
+              type="password"
+              value={organizerKey}
+              onChange={(event) => setOrganizerKey(event.target.value)}
+              placeholder="Enter the private access key"
+              autoComplete="current-password"
+            />
+
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={
+                !workspaceId.trim() ||
+                !organizerKey.trim() ||
+                accessState === "checking"
+              }
+            >
+              {accessState === "checking" ? "Checking..." : "Unlock Workspace"}
+            </button>
+
+            {accessError && <p className="form-error">{accessError}</p>}
           </form>
         </section>
       </main>
@@ -327,6 +602,13 @@ function LoanerList() {
     <main className="loaner-page">
       <section className="loaner-panel">
         <h1 className="loaners-title">Loaners</h1>
+
+        <div className="organizer-session-bar">
+          <span>Workspace: {organizerAccess.tenantId}</span>
+          <button type="button" onClick={() => lockOrganizer()}>
+            Lock
+          </button>
+        </div>
 
         <div className="loaner-mode-tabs">
           <button
@@ -369,8 +651,7 @@ function LoanerList() {
                     setSelectedCategory((current) =>
                       current === category ? "" : category
                     );
-                    setCheckoutUrl("");
-                    setActiveCheckoutSessionId("");
+                    clearGeneratedCheckout();
                   }}
                 >
                   {category}
@@ -393,8 +674,7 @@ function LoanerList() {
                     value={itemDescription}
                     onChange={(event) => {
                       setItemDescription(event.target.value);
-                      setCheckoutUrl("");
-                      setActiveCheckoutSessionId("");
+                      clearGeneratedCheckout();
                     }}
                     placeholder="Example: Midland handheld radio"
                   />
@@ -409,8 +689,7 @@ function LoanerList() {
                     value={itemId}
                     onChange={(event) => {
                       setItemId(event.target.value);
-                      setCheckoutUrl("");
-                      setActiveCheckoutSessionId("");
+                      clearGeneratedCheckout();
                     }}
                     placeholder="Example: Radio 3"
                   />
@@ -419,10 +698,19 @@ function LoanerList() {
                     className="primary-button"
                     type="button"
                     onClick={createCheckoutQr}
-                    disabled={itemDescription.trim().length < 2}
+                    disabled={
+                      itemDescription.trim().length < 2 ||
+                      qrCreationState === "creating"
+                    }
                   >
-                    Create Checkout QR
+                    {qrCreationState === "creating"
+                      ? "Creating Secure QR..."
+                      : "Create Checkout QR"}
                   </button>
+
+                  {qrCreationError && (
+                    <p className="form-error">{qrCreationError}</p>
+                  )}
                 </div>
               </section>
             )}
@@ -435,7 +723,10 @@ function LoanerList() {
                   <QRCodeSVG value={checkoutUrl} size={240} />
                 </div>
 
-                <p className="checkout-link">{checkoutUrl}</p>
+                <p className="qr-expiration">
+                  This QR works once and expires at{" "}
+                  {new Date(checkoutExpiresAt).toLocaleTimeString()}.
+                </p>
               </section>
             )}
           </>
