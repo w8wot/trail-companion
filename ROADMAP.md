@@ -9,13 +9,13 @@ https://github.com/w8wot/trail-companion/milestones
 
 # 🎯 Current Mission
 
-**Companion Loan Workflow**
+**Configurable Action Buttons**
 
 GitHub Milestone:
 https://github.com/w8wot/trail-companion/milestones
 
 Status:
-- 🟡 In Progress
+- ⚪ Next
 
 ---
 
@@ -30,23 +30,23 @@ Status:
 
 ---
 
-## ☐ 1. Companion Loan Workflow
+## ☑ 1. Companion Loan Workflow
 
-- [ ] Rename Checkout → Loan
-- [ ] Rename Return Items → Return
-- [ ] Build the progressive workflow
-- [ ] Replace radio-specific logic with generic action buttons
-- [ ] Build the reusable loan workflow
+- [x] Rename Checkout → Loan
+- [x] Rename Return Items → Return
+- [x] Build the progressive workflow
+- [x] Replace radio-specific logic with generic action buttons
+- [x] Build the reusable loan workflow
 
 ---
 
-## ☐ 2. Companion Loan Engine
+## ☑ 2. Companion Loan Engine
 
-- [ ] QR loan sessions
-- [ ] Organizer-managed loans
-- [ ] Active sessions
-- [ ] Session expiration
-- [ ] Returns
+- [x] QR loan sessions
+- [x] Organizer-managed loans
+- [x] Active sessions
+- [x] Session expiration
+- [x] Returns
 
 ---
 
