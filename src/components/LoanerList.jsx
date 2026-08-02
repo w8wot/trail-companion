@@ -11,6 +11,16 @@ const categories = [
   "Other",
 ];
 
+function createCheckoutSessionId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
 function LoanerList() {
   const params = new URLSearchParams(window.location.search);
   const apiBaseUrl = import.meta.env.VITE_API_URL || "/api";
@@ -23,12 +33,13 @@ function LoanerList() {
   const checkoutCategory = params.get("category") || "";
   const checkoutItem = params.get("item") || "";
   const checkoutId = params.get("id") || "";
+  const checkoutSessionId = params.get("session") || "";
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [itemId, setItemId] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
-  const [checkoutCreatedAt, setCheckoutCreatedAt] = useState("");
+  const [activeCheckoutSessionId, setActiveCheckoutSessionId] = useState("");
 
   const [borrowerName, setBorrowerName] = useState("");
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
@@ -50,8 +61,9 @@ function LoanerList() {
       category: decodeURIComponent(checkoutCategory),
       item: decodeURIComponent(checkoutItem),
       id: decodeURIComponent(checkoutId),
+      sessionId: checkoutSessionId,
     }),
-    [checkoutCategory, checkoutItem, checkoutId]
+    [checkoutCategory, checkoutItem, checkoutId, checkoutSessionId]
   );
 
   async function loadActiveLoaners() {
@@ -94,34 +106,18 @@ function LoanerList() {
     if (
       isCheckoutPage ||
       !checkoutUrl ||
-      !checkoutCreatedAt
+      !activeCheckoutSessionId
     ) {
       return;
     }
 
-    const checkoutWasCompleted = activeLoaners.some((loan) => {
-      const sameCategory = loan.category === selectedCategory;
-      const sameItem =
-        loan.item?.trim().toLowerCase() ===
-        itemDescription.trim().toLowerCase();
-      const sameId =
-        (loan.id || "").trim().toLowerCase() ===
-        itemId.trim().toLowerCase();
-      const happenedAfterQrCreation =
-        new Date(loan.checkedOutAt).getTime() >=
-        new Date(checkoutCreatedAt).getTime();
-
-      return (
-        sameCategory &&
-        sameItem &&
-        sameId &&
-        happenedAfterQrCreation
-      );
-    });
+    const checkoutWasCompleted = activeLoaners.some(
+      (loan) => loan.checkoutSessionId === activeCheckoutSessionId
+    );
 
     if (checkoutWasCompleted) {
       setCheckoutUrl("");
-      setCheckoutCreatedAt("");
+      setActiveCheckoutSessionId("");
       setSelectedCategory("");
       setItemDescription("");
       setItemId("");
@@ -129,11 +125,8 @@ function LoanerList() {
   }, [
     activeLoaners,
     checkoutUrl,
-    checkoutCreatedAt,
+    activeCheckoutSessionId,
     isCheckoutPage,
-    selectedCategory,
-    itemDescription,
-    itemId,
   ]);
 
   async function handleCheckIn(loan) {
@@ -170,17 +163,19 @@ function LoanerList() {
       return;
     }
 
+    const sessionId = createCheckoutSessionId();
     const checkoutParams = new URLSearchParams({
       checkout: "true",
       category: selectedCategory,
       item: itemDescription.trim(),
       id: itemId.trim(),
+      session: sessionId,
     });
 
     setCheckoutUrl(
       `${window.location.origin}${window.location.pathname}?${checkoutParams.toString()}`
     );
-    setCheckoutCreatedAt(new Date().toISOString());
+    setActiveCheckoutSessionId(sessionId);
   }
 
   async function handleBorrowerSubmit(event) {
@@ -205,6 +200,7 @@ function LoanerList() {
           category: decodedCheckout.category,
           item: decodedCheckout.item,
           id: decodedCheckout.id,
+          checkoutSessionId: decodedCheckout.sessionId,
           checkedOutAt: new Date().toISOString(),
         }),
       });
@@ -367,6 +363,7 @@ function LoanerList() {
                       current === category ? "" : category
                     );
                     setCheckoutUrl("");
+                    setActiveCheckoutSessionId("");
                   }}
                 >
                   {category}
@@ -390,6 +387,7 @@ function LoanerList() {
                     onChange={(event) => {
                       setItemDescription(event.target.value);
                       setCheckoutUrl("");
+                      setActiveCheckoutSessionId("");
                     }}
                     placeholder="Example: Midland handheld radio"
                   />
@@ -405,6 +403,7 @@ function LoanerList() {
                     onChange={(event) => {
                       setItemId(event.target.value);
                       setCheckoutUrl("");
+                      setActiveCheckoutSessionId("");
                     }}
                     placeholder="Example: Radio 3"
                   />

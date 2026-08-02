@@ -33,6 +33,9 @@ app.http("checkout", {
       const category = String(body.category || "").trim();
       const item = String(body.item || "").trim();
       const id = String(body.id || "").trim();
+      const checkoutSessionId = String(
+        body.checkoutSessionId || ""
+      ).trim();
       const checkedOutAt =
         body.checkedOutAt || new Date().toISOString();
 
@@ -67,6 +70,7 @@ app.http("checkout", {
         category,
         item,
         id,
+        checkoutSessionId,
         checkedOutAt,
         status: "checked-out",
       });
@@ -88,6 +92,7 @@ app.http("checkout", {
           category,
           item,
           id,
+          checkoutSessionId,
           checkedOutAt,
         },
       };

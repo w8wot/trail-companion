@@ -36,6 +36,7 @@ app.http("loaners", {
             category: entity.category,
             item: entity.item,
             id: entity.id || "",
+            checkoutSessionId: entity.checkoutSessionId || "",
             checkedOutAt: entity.checkedOutAt,
             status: entity.status,
           });
