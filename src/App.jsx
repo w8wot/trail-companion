@@ -2,20 +2,21 @@ import Navbar from "./components/Navbar";
 import LoanerList from "./components/LoanerList";
 
 function App() {
-  const searchCheckout = new URLSearchParams(
-    window.location.search
-  ).get("checkout");
-  const hashCheckout = new URLSearchParams(
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(
     window.location.hash.startsWith("#")
       ? window.location.hash.slice(1)
       : ""
-  ).get("checkout");
-  const isCheckoutPage =
-    searchCheckout === "true" || hashCheckout === "true";
+  );
+  const isLoanPage = [searchParams, hashParams].some(
+    (params) =>
+      params.get("loan") === "true" ||
+      params.get("checkout") === "true"
+  );
 
   return (
     <>
-      {!isCheckoutPage && <Navbar />}
+      {!isLoanPage && <Navbar />}
 
       <main
         style={{

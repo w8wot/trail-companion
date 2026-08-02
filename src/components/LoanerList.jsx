@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { releaseChannel } from "../releaseChannel";
 import "./LoanerList.css";
 
-const categories = [
+const loanTypes = [
   "Radio",
   "Gear",
   "Tire",
@@ -15,14 +15,37 @@ const categories = [
 const organizerSessionStorageKey =
   `companion-organizer-access-${releaseChannel}`;
 
-function getCheckoutParams() {
+function ActionButtonGrid({ actions, selectedAction, onSelect }) {
+  return (
+    <div className="category-grid">
+      {actions.map((action) => (
+        <button
+          aria-pressed={selectedAction === action}
+          className={`category-button ${
+            selectedAction === action ? "selected" : ""
+          }`}
+          key={action}
+          type="button"
+          onClick={() => onSelect(action)}
+        >
+          {action}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function getLoanParams() {
   const hashParams = new URLSearchParams(
     window.location.hash.startsWith("#")
       ? window.location.hash.slice(1)
       : ""
   );
 
-  if (hashParams.get("checkout") === "true") {
+  if (
+    hashParams.get("loan") === "true" ||
+    hashParams.get("checkout") === "true"
+  ) {
     return hashParams;
   }
 
@@ -55,7 +78,7 @@ async function getResponseError(response, fallbackMessage) {
 }
 
 function LoanerList() {
-  const params = getCheckoutParams();
+  const params = getLoanParams();
   const apiBaseUrl = import.meta.env.VITE_API_URL || "/api";
 
   const checkoutApiUrl = `${apiBaseUrl}/checkout`;
@@ -63,7 +86,8 @@ function LoanerList() {
   const checkinApiUrl = `${apiBaseUrl}/checkin`;
   const loanSessionApiUrl = `${apiBaseUrl}/loan-session`;
 
-  const isCheckoutPage = params.get("checkout") === "true";
+  const isLoanPage =
+    params.get("loan") === "true" || params.get("checkout") === "true";
   const checkoutCategory = params.get("category") || "";
   const checkoutItem = params.get("item") || "";
   const checkoutId = params.get("id") || "";
@@ -243,7 +267,7 @@ function LoanerList() {
   );
 
   useEffect(() => {
-    if (isCheckoutPage || !organizerAccess) {
+    if (isLoanPage || !organizerAccess) {
       return;
     }
 
@@ -259,11 +283,11 @@ function LoanerList() {
       clearTimeout(initialRefreshTimer);
       clearInterval(refreshTimer);
     };
-  }, [isCheckoutPage, loadActiveLoaners, organizerAccess]);
+  }, [isLoanPage, loadActiveLoaners, organizerAccess]);
 
   useEffect(() => {
     if (
-      isCheckoutPage ||
+      isLoanPage ||
       !checkoutUrl ||
       !activeCheckoutSessionId
     ) {
@@ -291,7 +315,7 @@ function LoanerList() {
     activeLoaners,
     checkoutUrl,
     activeCheckoutSessionId,
-    isCheckoutPage,
+    isLoanPage,
   ]);
 
   async function handleCheckIn(loan) {
@@ -364,7 +388,7 @@ function LoanerList() {
       if (!response.ok) {
         const message = await getResponseError(
           response,
-          "Unable to create a secure checkout QR"
+          "Unable to create a secure loan QR"
         );
 
         if (response.status === 401) {
@@ -377,7 +401,7 @@ function LoanerList() {
 
       const data = await response.json();
       const checkoutParams = new URLSearchParams({
-        checkout: "true",
+        loan: "true",
         category: selectedCategory,
         item: itemDescription.trim(),
         id: itemId.trim(),
@@ -386,7 +410,7 @@ function LoanerList() {
       });
 
       setCheckoutUrl(
-        `${window.location.origin}${window.location.pathname}?checkout=true&v=${Date.now()}#${checkoutParams.toString()}`
+        `${window.location.origin}${window.location.pathname}?loan=true&v=${Date.now()}#${checkoutParams.toString()}`
       );
       setActiveCheckoutSessionId(data.sessionId);
       setCheckoutExpiresAt(data.expiresAt);
@@ -395,7 +419,7 @@ function LoanerList() {
       setQrCreationError(
         error instanceof Error
           ? error.message
-          : "Unable to create a secure checkout QR"
+          : "Unable to create a secure loan QR"
       );
       setQrCreationState("error");
     }
@@ -425,7 +449,7 @@ function LoanerList() {
 
       if (!response.ok) {
         throw new Error(
-          await getResponseError(response, "Unable to record checkout")
+          await getResponseError(response, "Unable to record loan")
         );
       }
 
@@ -436,24 +460,24 @@ function LoanerList() {
       window.history.replaceState(
         null,
         "",
-        `${window.location.pathname}?checkout=true`
+        `${window.location.pathname}?loan=true`
       );
     } catch (error) {
-      console.error("Unable to record checkout", error);
+      console.error("Unable to record loan", error);
       setCheckoutError(error instanceof Error ? error.message : String(error));
       setCheckoutSyncState("error");
     }
   }
 
-  if (isCheckoutPage) {
+  if (isLoanPage) {
     if (checkoutConfirmed) {
       return (
         <main className="loaner-page">
           <section className="loaner-panel">
-            <h1>Checkout Confirmed</h1>
+            <h1>Loan Confirmed</h1>
 
             <p className="confirmation-message">
-              <strong>{cleanedBorrowerName}</strong> checked out:
+              <strong>{cleanedBorrowerName}</strong> borrowed:
             </p>
 
             <div className="checkout-summary">
@@ -472,7 +496,7 @@ function LoanerList() {
               )}
 
               <p>
-                <strong>Status:</strong> Checkout recorded securely
+                <strong>Status:</strong> Loan recorded securely
               </p>
             </div>
           </section>
@@ -483,7 +507,7 @@ function LoanerList() {
     return (
       <main className="loaner-page">
         <section className="loaner-panel">
-          <h1>Confirm Checkout</h1>
+          <h1>Confirm Loan</h1>
 
           <div className="checkout-summary">
             <p>
@@ -530,12 +554,12 @@ function LoanerList() {
             >
               {checkoutSyncState === "saving"
                 ? "Saving..."
-                : "Confirm Checkout"}
+                : "Confirm Loan"}
             </button>
 
             {!checkoutToken && (
               <p className="form-error">
-                This checkout link is invalid. Ask the organizer for a new QR.
+                This loan link is invalid. Ask the organizer for a new QR.
               </p>
             )}
 
@@ -624,7 +648,7 @@ function LoanerList() {
             type="button"
             onClick={() => setAppView("checkout")}
           >
-            Check Out
+            Loan
           </button>
 
           <button
@@ -637,41 +661,34 @@ function LoanerList() {
               loadActiveLoaners();
             }}
           >
-            Return Items
+            Return
           </button>
         </div>
 
         {appView === "checkout" && (
           <>
-            <h2 className="section-heading">Select a category</h2>
+            <h2 className="section-heading">1. Select a loan type</h2>
 
-            <div className="category-grid">
-              {categories.map((category) => (
-                <button
-                  className={`category-button ${
-                    selectedCategory === category ? "selected" : ""
-                  }`}
-                  key={category}
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory((current) =>
-                      current === category ? "" : category
-                    );
-                    clearGeneratedCheckout();
-                  }}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+            <ActionButtonGrid
+              actions={loanTypes}
+              selectedAction={selectedCategory}
+              onSelect={(loanType) => {
+                setSelectedCategory((current) =>
+                  current === loanType ? "" : loanType
+                );
+                setItemDescription("");
+                setItemId("");
+                clearGeneratedCheckout();
+              }}
+            />
 
             {selectedCategory && (
               <section className="item-section">
-                <h2>{selectedCategory}</h2>
+                <h2>2. Enter loan details</h2>
 
                 <div className="loaner-form">
                   <label htmlFor="item-description">
-                    Item description
+                    Item name or description
                   </label>
 
                   <input
@@ -682,11 +699,11 @@ function LoanerList() {
                       setItemDescription(event.target.value);
                       clearGeneratedCheckout();
                     }}
-                    placeholder="Example: Midland handheld radio"
+                    placeholder="Describe the item being loaned"
                   />
 
                   <label htmlFor="item-id">
-                    ID number or notes
+                    ID or notes (optional)
                   </label>
 
                   <input
@@ -697,7 +714,7 @@ function LoanerList() {
                       setItemId(event.target.value);
                       clearGeneratedCheckout();
                     }}
-                    placeholder="Example: Radio 3"
+                    placeholder="Example: Unit 3 or identifying notes"
                   />
 
                   <button
@@ -711,7 +728,7 @@ function LoanerList() {
                   >
                     {qrCreationState === "creating"
                       ? "Creating Secure QR..."
-                      : "Create Checkout QR"}
+                      : "Create Loan QR"}
                   </button>
 
                   {qrCreationError && (
@@ -723,7 +740,7 @@ function LoanerList() {
 
             {checkoutUrl && (
               <section className="qr-section">
-                <h2>Scan to Check Out</h2>
+                <h2>3. Scan to Borrow</h2>
 
                 <div className="qr-code">
                   <QRCodeSVG value={checkoutUrl} size={240} />
@@ -740,31 +757,22 @@ function LoanerList() {
 
         {appView === "return" && (
           <>
-            <h2 className="section-heading">Select a category</h2>
+            <h2 className="section-heading">1. Select a loan type</h2>
 
-            <div className="category-grid">
-              {categories.map((category) => (
-                <button
-                  className={`category-button ${
-                    returnCategory === category ? "selected" : ""
-                  }`}
-                  key={category}
-                  type="button"
-                  onClick={() =>
-                    setReturnCategory((current) =>
-                      current === category ? "" : category
-                    )
-                  }
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+            <ActionButtonGrid
+              actions={loanTypes}
+              selectedAction={returnCategory}
+              onSelect={(loanType) =>
+                setReturnCategory((current) =>
+                  current === loanType ? "" : loanType
+                )
+              }
+            />
 
             {returnCategory && (
               <section className="active-loans-section">
                 <div className="active-loans-heading">
-                  <h2>Checked-Out {returnCategory} Items</h2>
+                  <h2>2. Select an active loan</h2>
 
                   <button
                     className="primary-button"

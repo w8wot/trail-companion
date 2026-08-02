@@ -39,7 +39,7 @@ app.http("checkout", {
         return {
           status: 400,
           headers,
-          jsonBody: { error: "Enter a valid name and use a valid checkout link" },
+          jsonBody: { error: "Enter a valid name and use a valid loan link" },
         };
       }
 
@@ -82,7 +82,7 @@ app.http("checkout", {
             status: 409,
             headers,
             jsonBody: {
-              error: "This checkout QR has already been used",
+              error: "This loan QR has already been used",
             },
           };
         }
@@ -117,7 +117,7 @@ app.http("checkout", {
         status: 500,
         headers,
         jsonBody: {
-          error: "Unable to save checkout",
+          error: "Unable to save loan",
         },
       };
     }

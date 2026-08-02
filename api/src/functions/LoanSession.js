@@ -86,8 +86,8 @@ app.http("loanSession", {
         headers,
         jsonBody: {
           error: configurationError
-            ? "Checkout security is not configured"
-            : "Unable to create checkout session",
+            ? "Loan security is not configured"
+            : "Unable to create loan session",
         },
       };
     }

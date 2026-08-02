@@ -197,7 +197,7 @@ function verifyCheckoutToken(token) {
     ).split(".");
 
     if (!encodedPayload || !providedSignature || extraPart) {
-      return { ok: false, status: 401, error: "Invalid checkout link" };
+      return { ok: false, status: 401, error: "Invalid loan link" };
     }
 
     const expectedSignature = signPayload(encodedPayload);
@@ -208,7 +208,7 @@ function verifyCheckoutToken(token) {
       providedBuffer.length !== expectedBuffer.length ||
       !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
     ) {
-      return { ok: false, status: 401, error: "Invalid checkout link" };
+      return { ok: false, status: 401, error: "Invalid loan link" };
     }
 
     const payload = JSON.parse(
@@ -229,14 +229,14 @@ function verifyCheckoutToken(token) {
       Number.isFinite(payload.expiresAt);
 
     if (!payloadIsValid) {
-      return { ok: false, status: 401, error: "Invalid checkout link" };
+      return { ok: false, status: 401, error: "Invalid loan link" };
     }
 
     if (Date.now() > payload.expiresAt) {
       return {
         ok: false,
         status: 410,
-        error: "This checkout QR has expired. Ask the organizer for a new one.",
+        error: "This loan QR has expired. Ask the organizer for a new one.",
       };
     }
 
@@ -249,11 +249,11 @@ function verifyCheckoutToken(token) {
       return {
         ok: false,
         status: 503,
-        error: "Checkout security is not configured",
+        error: "Loan security is not configured",
       };
     }
 
-    return { ok: false, status: 401, error: "Invalid checkout link" };
+    return { ok: false, status: 401, error: "Invalid loan link" };
   }
 }
 

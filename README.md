@@ -2,13 +2,13 @@
 
 Trail Companion is a source-available web application designed to simplify loaning equipment during off-road events, club rides, training classes, and other group activities.
 
-Instead of manually tracking who borrowed radios or recovery gear, organizers generate a QR code for each item. Borrowers scan the code, enter their name, and the checkout is immediately recorded. The organizer's screen automatically resets and is ready for the next borrower.
+Instead of manually tracking who borrowed radios or recovery gear, organizers generate a QR code for each item. Borrowers scan the code, enter their name, and the loan is immediately recorded. The organizer's screen automatically resets and is ready for the next borrower.
 
 ---
 
 ## Features
 
-- 📱 QR code equipment checkout
+- 📱 QR code equipment loans
 - 👤 Mobile-friendly borrower interface
 - ☁️ Azure Functions backend
 - 💾 Azure Table Storage
@@ -23,8 +23,8 @@ Instead of manually tracking who borrowed radios or recovery gear, organizers ge
 
 ### Organizer
 
-1. Select a category
-2. Enter the equipment description
+1. Select a loan type
+2. Enter the item description
 3. Optionally enter an ID or inventory number
 4. Generate a QR code
 
@@ -32,11 +32,11 @@ Instead of manually tracking who borrowed radios or recovery gear, organizers ge
 
 1. Scan the QR code
 2. Enter their name
-3. Submit the checkout
+3. Confirm the loan
 
 ### System
 
-- Checkout is stored in Azure
+- Loan is stored in Azure
 - Organizer display automatically clears the QR
 - Equipment becomes available in the Return screen
 - Item can later be checked back in
@@ -71,7 +71,7 @@ organizers can only list or return loans from their assigned workspace.
 
 Organizer keys are entered at runtime and are never stored in the source,
 frontend build, or borrower QR. Borrower QR links use signed, expiring,
-one-use checkout tokens. Active-loan responses are marked `no-store`.
+one-use loan tokens. Active-loan responses are marked `no-store`.
 
 Required Azure Functions application settings:
 
@@ -109,11 +109,11 @@ to the Dev resources.
 
 ## Project Status
 
-Current development focuses on creating a simple, reliable checkout system before expanding into inventory management and event features.
+Current development focuses on creating a simple, reliable loan system before expanding into inventory management and event features.
 
 Implemented:
 
-- ✅ QR checkout workflow
+- ✅ QR loan workflow
 - ✅ Azure synchronization
 - ✅ Automatic organizer refresh
 - ✅ Equipment return/check-in
@@ -123,7 +123,7 @@ Planned:
 
 - Event sessions
 - Inventory management
-- Checkout history
+- Loan history
 - Search and filtering
 - Club customization
 - Authentication
