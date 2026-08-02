@@ -384,7 +384,7 @@ function LoanerList() {
       });
 
       setCheckoutUrl(
-        `${window.location.origin}${window.location.pathname}#${checkoutParams.toString()}`
+        `${window.location.origin}${window.location.pathname}?checkout=true&v=${Date.now()}#${checkoutParams.toString()}`
       );
       setActiveCheckoutSessionId(data.sessionId);
       setCheckoutExpiresAt(data.expiresAt);
