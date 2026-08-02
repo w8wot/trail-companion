@@ -84,6 +84,29 @@ Never commit organizer keys, the session secret, or `local.settings.json`.
 
 ---
 
+## Release Channels
+
+- `main` — Production. Inactive until the production environment launches.
+- `beta` — Stable tester releases on the current GitHub Pages and Azure Beta
+  resources.
+- `develop` — Active work deployed to the isolated Azure Dev website, Function
+  App, and storage resources.
+
+Changes are promoted in one direction: `develop` → `beta` → `main`.
+Direct feature work should not be committed to `beta` or `main`.
+
+To publish a committed Dev build while on `develop`, run:
+
+```bash
+bash scripts/deploy-dev.sh
+```
+
+The script refuses to run from another branch or with uncommitted tracked
+changes. It runs lint, the frontend build, and API tests before deploying only
+to the Dev resources.
+
+---
+
 ## Project Status
 
 Current development focuses on creating a simple, reliable checkout system before expanding into inventory management and event features.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { releaseChannel } from "../releaseChannel";
 import "./LoanerList.css";
 
 const categories = [
@@ -11,7 +12,8 @@ const categories = [
   "Other",
 ];
 
-const organizerSessionStorageKey = "companion-organizer-access";
+const organizerSessionStorageKey =
+  `companion-organizer-access-${releaseChannel}`;
 
 function getCheckoutParams() {
   const hashParams = new URLSearchParams(

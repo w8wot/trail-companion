@@ -1,5 +1,11 @@
+import {
+  releaseChannel,
+  releaseChannelLabel,
+} from "../releaseChannel";
+
 function Navbar() {
   const navItems = ["Home", "Features", "About", "Contact"];
+  const showReleaseChannel = releaseChannel !== "production";
 
   return (
     <header
@@ -13,16 +19,30 @@ function Navbar() {
         backgroundColor: "#1c1c1c",
       }}
     >
-      <h1
-        style={{
-          margin: 0,
-          color: "#FF7A00",
-          fontSize: "1.8rem",
-          letterSpacing: "1px",
-        }}
-      >
-        Trail Companion
-      </h1>
+      <div style={titleRowStyle}>
+        <h1
+          style={{
+            margin: 0,
+            color: "#FF7A00",
+            fontSize: "1.8rem",
+            letterSpacing: "1px",
+          }}
+        >
+          Trail Companion
+        </h1>
+
+        {showReleaseChannel && (
+          <span
+            style={{
+              ...releaseChannelStyle,
+              backgroundColor:
+                releaseChannel === "development" ? "#7c3aed" : "#2563eb",
+            }}
+          >
+            {releaseChannelLabel}
+          </span>
+        )}
+      </div>
 
       <nav
         style={{
@@ -49,6 +69,22 @@ function Navbar() {
     </header>
   );
 }
+
+const titleRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "10px",
+};
+
+const releaseChannelStyle = {
+  padding: "3px 7px",
+  color: "#FFFFFF",
+  borderRadius: "6px",
+  fontSize: "0.65rem",
+  fontWeight: "900",
+  letterSpacing: "0.8px",
+};
 
 const navItemStyle = {
   position: "relative",

@@ -32,6 +32,8 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: https://w8wot-trail-companion-api.azurewebsites.net/api
+          VITE_BASE_PATH: /trail-companion/
+          VITE_RELEASE_CHANNEL: beta
 
       - uses: actions/configure-pages@v5
 
