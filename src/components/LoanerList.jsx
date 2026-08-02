@@ -688,7 +688,7 @@ function LoanerList() {
 
                 <div className="loaner-form">
                   <label htmlFor="item-description">
-                    Item name or description
+                    Item
                   </label>
 
                   <input
@@ -699,11 +699,11 @@ function LoanerList() {
                       setItemDescription(event.target.value);
                       clearGeneratedCheckout();
                     }}
-                    placeholder="Describe the item being loaned"
+                    placeholder="Item name"
                   />
 
                   <label htmlFor="item-id">
-                    ID or notes (optional)
+                    ID / notes (optional)
                   </label>
 
                   <input
@@ -714,7 +714,7 @@ function LoanerList() {
                       setItemId(event.target.value);
                       clearGeneratedCheckout();
                     }}
-                    placeholder="Example: Unit 3 or identifying notes"
+                    placeholder="Unit 3"
                   />
 
                   <button
