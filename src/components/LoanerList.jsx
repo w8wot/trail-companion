@@ -431,7 +431,11 @@ function LoanerList() {
       setCompletedCheckout(data);
       setCheckoutSyncState("saved");
       setCheckoutConfirmed(true);
-      window.history.replaceState(null, "", window.location.pathname);
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}?checkout=true`
+      );
     } catch (error) {
       console.error("Unable to record checkout", error);
       setCheckoutError(error instanceof Error ? error.message : String(error));
